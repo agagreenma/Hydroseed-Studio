@@ -1,0 +1,4 @@
+# HYDROSEED Studio (studio.hydroseed.app) is a private internal workspace.
+# The application is noindex,nofollow — crawling is disallowed for every agent.
+User-agent: *
+Disallow: /
