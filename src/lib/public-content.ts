@@ -32,7 +32,7 @@ export type PublishedArticle = {
   seo: { meta_title?: string; meta_description?: string; canonical_url?: string };
 };
 
-type PublicContentRow = {
+export type PublicContentRow = {
   id: string;
   slug: string;
   title: string;
@@ -112,6 +112,17 @@ async function queryPublishedArticles(slug?: string) {
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as PublicContentRow[];
+}
+
+export async function fetchPreviewArticle(id: string) {
+  const { data, error } = await supabase
+    .from("content_items")
+    .select("*, authors(name, role_title), categories(name), media_assets(url, alt_text)")
+    .eq("id", id)
+    .in("type", ["article", "blog_post"])
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapPublishedArticle(data as unknown as PublicContentRow) : null;
 }
 
 export async function fetchPublishedArticles() {

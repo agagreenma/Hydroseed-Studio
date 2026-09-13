@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Clock3, RotateCcw, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock3, Eye, RotateCcw, Send, Trash2 } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/studio/PageHeader";
 import { ContentEditorForm } from "@/components/studio/ContentEditorForm";
 import { ErrorState, LoadingState, EmptyState, RoleNote, SuccessNote } from "@/components/studio/States";
@@ -153,6 +153,15 @@ function ContentItemPage() {
             >
               <ArrowLeft className="h-4 w-4" /> Back to list
             </Link>
+            {data && (data.type === "article" || data.type === "blog_post") && (
+              <Link
+                to="/content/preview/$id"
+                params={{ id }}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm hover:bg-muted"
+              >
+                <Eye className="h-4 w-4" /> Preview
+              </Link>
+            )}
             <button
               type="button"
               disabled={!canEdit || remove.isPending}

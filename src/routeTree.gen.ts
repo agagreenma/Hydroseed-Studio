@@ -42,6 +42,7 @@ import { Route as JournalCaseStudiesRouteImport } from './routes/journal.case-st
 import { Route as JournalResourcesRouteImport } from './routes/journal.resources'
 import { Route as LearnIndexRouteImport } from './routes/learn.index'
 import { Route as LearnSlugRouteImport } from './routes/learn.$slug'
+import { Route as ContentPreviewIdRouteImport } from './routes/content.preview.$id'
 import { Route as JournalAcademySlugRouteImport } from './routes/journal.academy.$slug'
 import { Route as JournalArticlesSlugRouteImport } from './routes/journal.articles.$slug'
 import { Route as JournalCaseStudiesSlugRouteImport } from './routes/journal.case-studies.$slug'
@@ -212,6 +213,11 @@ const LearnSlugRoute = LearnSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => LearnRoute,
 } as any)
+const ContentPreviewIdRoute = ContentPreviewIdRouteImport.update({
+  id: '/preview/$id',
+  path: '/preview/$id',
+  getParentRoute: () => ContentRoute,
+} as any)
 const JournalAcademySlugRoute = JournalAcademySlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -267,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/learn/$slug': typeof LearnSlugRoute
   '/content/': typeof ContentIndexRoute
   '/learn/': typeof LearnIndexRoute
+  '/content/preview/$id': typeof ContentPreviewIdRoute
   '/journal/academy/$slug': typeof JournalAcademySlugRoute
   '/journal/articles/$slug': typeof JournalArticlesSlugRoute
   '/journal/case-studies/$slug': typeof JournalCaseStudiesSlugRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/learn/$slug': typeof LearnSlugRoute
   '/content': typeof ContentIndexRoute
   '/learn': typeof LearnIndexRoute
+  '/content/preview/$id': typeof ContentPreviewIdRoute
   '/journal/academy/$slug': typeof JournalAcademySlugRoute
   '/journal/articles/$slug': typeof JournalArticlesSlugRoute
   '/journal/case-studies/$slug': typeof JournalCaseStudiesSlugRoute
@@ -344,6 +352,7 @@ export interface FileRoutesById {
   '/learn/$slug': typeof LearnSlugRoute
   '/content/': typeof ContentIndexRoute
   '/learn/': typeof LearnIndexRoute
+  '/content/preview/$id': typeof ContentPreviewIdRoute
   '/journal/academy/$slug': typeof JournalAcademySlugRoute
   '/journal/articles/$slug': typeof JournalArticlesSlugRoute
   '/journal/case-studies/$slug': typeof JournalCaseStudiesSlugRoute
@@ -385,6 +394,7 @@ export interface FileRouteTypes {
     | '/learn/$slug'
     | '/content/'
     | '/learn/'
+    | '/content/preview/$id'
     | '/journal/academy/$slug'
     | '/journal/articles/$slug'
     | '/journal/case-studies/$slug'
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
     | '/learn/$slug'
     | '/content'
     | '/learn'
+    | '/content/preview/$id'
     | '/journal/academy/$slug'
     | '/journal/articles/$slug'
     | '/journal/case-studies/$slug'
@@ -461,6 +472,7 @@ export interface FileRouteTypes {
     | '/learn/$slug'
     | '/content/'
     | '/learn/'
+    | '/content/preview/$id'
     | '/journal/academy/$slug'
     | '/journal/articles/$slug'
     | '/journal/case-studies/$slug'
@@ -725,6 +737,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LearnSlugRouteImport
       parentRoute: typeof LearnRoute
     }
+    '/content/preview/$id': {
+      id: '/content/preview/$id'
+      path: '/preview/$id'
+      fullPath: '/content/preview/$id'
+      preLoaderRoute: typeof ContentPreviewIdRouteImport
+      parentRoute: typeof ContentRoute
+    }
     '/journal/academy/$slug': {
       id: '/journal/academy/$slug'
       path: '/$slug'
@@ -770,12 +789,14 @@ interface ContentRouteChildren {
   ContentIdRoute: typeof ContentIdRoute
   ContentNewRoute: typeof ContentNewRoute
   ContentIndexRoute: typeof ContentIndexRoute
+  ContentPreviewIdRoute: typeof ContentPreviewIdRoute
 }
 
 const ContentRouteChildren: ContentRouteChildren = {
   ContentIdRoute: ContentIdRoute,
   ContentNewRoute: ContentNewRoute,
   ContentIndexRoute: ContentIndexRoute,
+  ContentPreviewIdRoute: ContentPreviewIdRoute,
 }
 
 const ContentRouteWithChildren =
