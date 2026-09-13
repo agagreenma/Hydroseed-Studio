@@ -69,6 +69,7 @@ function ContentListPage() {
             </a>
             <Link
               to="/content/new"
+              search={{ type: undefined }}
               className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
             >
               <Plus className="h-4 w-4" /> New content
@@ -146,7 +147,7 @@ function ContentListPage() {
             title="No content items yet"
             description="Create your first content item to start the HYDROSEED content library."
             action={
-              <Link to="/content/new" className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">
+              <Link to="/content/new" search={{ type: undefined }} className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">
                 <Plus className="h-4 w-4" /> New content
               </Link>
             }

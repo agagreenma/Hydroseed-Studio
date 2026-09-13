@@ -2,8 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/studio/PageHeader";
 import { ContentEditorForm } from "@/components/studio/ContentEditorForm";
+import type { ContentType } from "@/lib/studio-api";
 
 export const Route = createFileRoute("/content/new")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    type: search.type === "landing_page" ? ("landing_page" as const) : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "New content · HYDROSEED Studio" },
@@ -24,12 +28,13 @@ export const Route = createFileRoute("/content/new")({
 });
 
 function NewContentPage() {
+  const { type } = Route.useSearch();
   return (
     <>
       <PageHeader
         eyebrow="Publishing · Content"
-        title="New content"
-        description="Create a draft. Status changes and publishing arrive in a later phase."
+        title={type === "landing_page" ? "New website content" : "New content"}
+        description="Create a draft in the central Content Library."
         actions={
           <Link
             to="/content"
@@ -40,7 +45,7 @@ function NewContentPage() {
         }
       />
       <PageBody>
-        <ContentEditorForm />
+        <ContentEditorForm defaultType={(type ?? "article") as ContentType} />
       </PageBody>
     </>
   );

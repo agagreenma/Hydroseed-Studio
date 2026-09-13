@@ -34,6 +34,7 @@ export type PublishedArticle = {
 
 export type PublicContentRow = {
   id: string;
+  type: "article" | "blog_post";
   slug: string;
   title: string;
   excerpt: string | null;
@@ -47,6 +48,24 @@ export type PublicContentRow = {
   authors?: { name: string; role_title: string | null } | null;
   categories?: { name: string } | null;
   media_assets?: { url: string; alt_text: string | null } | null;
+};
+
+export type PublishingPayload = {
+  id: string;
+  type: "article" | "blog_post";
+  slug: string;
+  title: string;
+  body: string | null;
+  excerpt: string | null;
+  locale: string;
+  author: { id: string | null; name: string; role: string };
+  taxonomy: { category: string };
+  status: "published";
+  published_at: string | null;
+  updated_at: string;
+  cover_url: string | null;
+  seo: PublishedArticle["seo"];
+  canonical_url: string;
 };
 
 function initials(name: string) {
@@ -74,29 +93,54 @@ function bodyBlocks(body: string | null): PublishedArticle["body"] {
   });
 }
 
-function mapPublishedArticle(row: PublicContentRow): PublishedArticle {
+export function buildPublishingPayload(row: PublicContentRow): PublishingPayload {
   const seo = (row.seo ?? {}) as PublishedArticle["seo"];
-  const content = row.body ?? "";
   return {
     id: row.id,
+    type: row.type,
     slug: row.slug,
     title: row.title,
-    dek: row.excerpt ?? "",
-    excerpt: row.excerpt ?? "",
-    section: row.categories?.name ?? "HYDROSEED Journal",
-    category: row.categories?.name ?? "HYDROSEED Journal",
     author: {
+      id: row.author_id,
       name: row.authors?.name ?? "HYDROSEED Studio",
       role: row.authors?.role_title ?? "HYDROSEED Studio",
-      initials: initials(row.authors?.name ?? "HYDROSEED"),
     },
-    publishedAt: row.published_at ?? row.updated_at,
-    updatedAt: row.updated_at,
-    readingMinutes: Math.max(1, Math.ceil(content.split(/\s+/).filter(Boolean).length / 200)),
-    cover: row.media_assets?.url ?? null,
-    canonicalUrl: seo.canonical_url ?? `https://studio.hydroseed.app/journal/articles/${row.slug}`,
-    body: bodyBlocks(row.body),
+    body: row.body,
+    excerpt: row.excerpt,
+    locale: row.locale,
+    taxonomy: { category: row.categories?.name ?? "HYDROSEED Journal" },
+    status: "published",
+    published_at: row.published_at,
+    updated_at: row.updated_at,
+    cover_url: row.media_assets?.url ?? null,
     seo,
+    canonical_url: seo.canonical_url ?? `https://studio.hydroseed.app/journal/articles/${row.slug}`,
+  };
+}
+
+function mapPublishedArticle(row: PublicContentRow): PublishedArticle {
+  const payload = buildPublishingPayload(row);
+  const content = payload.body ?? "";
+  return {
+    id: payload.id,
+    slug: payload.slug,
+    title: payload.title,
+    dek: payload.excerpt ?? "",
+    excerpt: payload.excerpt ?? "",
+    section: payload.taxonomy.category,
+    category: payload.taxonomy.category,
+    author: {
+      name: payload.author.name,
+      role: payload.author.role,
+      initials: initials(payload.author.name),
+    },
+    publishedAt: payload.published_at ?? payload.updated_at,
+    updatedAt: payload.updated_at,
+    readingMinutes: Math.max(1, Math.ceil(content.split(/\s+/).filter(Boolean).length / 200)),
+    cover: payload.cover_url,
+    canonicalUrl: payload.canonical_url,
+    body: bodyBlocks(payload.body),
+    seo: payload.seo,
   };
 }
 

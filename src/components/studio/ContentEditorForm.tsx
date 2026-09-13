@@ -36,9 +36,9 @@ const areaCls =
   "w-full rounded-md border border-border bg-card px-3 py-2 text-sm disabled:opacity-60";
 const labelCls = "mono-label mb-1.5 block";
 
-type Props = { item?: ContentItem };
+type Props = { item?: ContentItem; defaultType?: ContentType };
 
-export function ContentEditorForm({ item }: Props) {
+export function ContentEditorForm({ item, defaultType = "article" }: Props) {
   const isEdit = !!item;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -65,7 +65,7 @@ export function ContentEditorForm({ item }: Props) {
   const [title, setTitle] = useState(item?.title ?? "");
   const [slug, setSlug] = useState(item?.slug ?? "");
   const [slugTouched, setSlugTouched] = useState(isEdit);
-  const [type, setType] = useState<ContentType>(item?.type ?? "article");
+  const [type, setType] = useState<ContentType>(item?.type ?? defaultType);
   const [locale, setLocale] = useState(item?.locale ?? "en");
   const [excerpt, setExcerpt] = useState(item?.excerpt ?? "");
   const [body, setBody] = useState(item?.body ?? "");
