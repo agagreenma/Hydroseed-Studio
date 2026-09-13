@@ -20,13 +20,16 @@ import {
 import { useStudioRole } from "@/hooks/useStudioRole";
 import {
   createAuthor,
+  addMemberRole,
   deleteAuthor,
   fetchAllRoles,
   fetchAuthors,
   fetchMembers,
+  removeMemberRole,
   slugify,
   updateAuthor,
   type Author,
+  type AppRole,
 } from "@/lib/studio-api";
 
 export const Route = createFileRoute("/team")({
@@ -50,6 +53,7 @@ export const Route = createFileRoute("/team")({
 });
 
 const fieldCls = "h-9 w-full rounded-md border border-border bg-card px-3 text-sm";
+const WORKFLOW_ROLES: AppRole[] = ["writer", "editor", "seo_reviewer", "publisher", "administrator"];
 
 function TeamPage() {
   const { isAdmin, primaryRole, loading: roleLoading } = useStudioRole();
@@ -117,6 +121,14 @@ function TeamPage() {
     onSuccess: async () => {
       setSuccess("Author deleted.");
       await queryClient.invalidateQueries({ queryKey: ["authors"] });
+    },
+  });
+
+  const roleMutation = useMutation({
+    mutationFn: ({ userId, role, enabled }: { userId: string; role: AppRole; enabled: boolean }) =>
+      enabled ? addMemberRole(userId, role) : removeMemberRole(userId, role),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["all-roles"] });
     },
   });
 
@@ -350,6 +362,24 @@ function TeamPage() {
                       ))
                     )}
                   </div>
+                  {isAdmin && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {WORKFLOW_ROLES.filter((r) => r !== "administrator").map((role) => {
+                        const enabled = rolesFor(m.id).includes(role);
+                        return (
+                          <label key={role} className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <input
+                              type="checkbox"
+                              checked={enabled}
+                              disabled={roleMutation.isPending}
+                              onChange={(event) => roleMutation.mutate({ userId: m.id, role, enabled: event.target.checked })}
+                            />
+                            {role}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

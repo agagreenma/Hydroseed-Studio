@@ -4,9 +4,11 @@ import { ArrowRight, Search, Clock, ChevronRight } from "lucide-react";
 import { studioUrl } from "@/lib/site";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
-import { POSTS, TOPICS, CLUSTERS, GUIDES, formatDate, type JournalPost } from "@/lib/journal";
+import { CLUSTERS, GUIDES } from "@/lib/journal";
+import { fetchPublishedArticles, formatDate, type PublishedArticle } from "@/lib/public-content";
 
 export const Route = createFileRoute("/journal")({
+  loader: () => fetchPublishedArticles(),
   head: () => ({
     meta: [
       { title: "HYDROSEED Journal — Insight for erosion control and revegetation pros" },
@@ -44,7 +46,7 @@ export const Route = createFileRoute("/journal")({
   component: JournalIndex,
 });
 
-function AuthorLine({ post, muted = false }: { post: JournalPost; muted?: boolean }) {
+function AuthorLine({ post, muted = false }: { post: PublishedArticle; muted?: boolean }) {
   return (
     <div className={`flex items-center gap-2 text-xs ${muted ? "text-muted-foreground" : ""}`}>
       <span className="grid h-6 w-6 place-items-center rounded-full bg-muted text-[10px] font-medium">
@@ -61,20 +63,20 @@ function AuthorLine({ post, muted = false }: { post: JournalPost; muted?: boolea
   );
 }
 
-function ArticleCard({ post, size = "md" }: { post: JournalPost; size?: "md" | "lg" }) {
+function ArticleCard({ post, size = "md" }: { post: PublishedArticle; size?: "md" | "lg" }) {
   return (
     <Link
-      to="/journal/$slug"
+      to="/journal/articles/$slug"
       params={{ slug: post.slug }}
       className="group block"
     >
       <div className={`overflow-hidden rounded-lg border border-border bg-card ${size === "lg" ? "aspect-[16/10]" : "aspect-[4/3]"}`}>
-        <img
+        {post.cover ? <img
           src={post.cover}
           alt={post.title}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
           loading="lazy"
-        />
+        /> : <div className="h-full w-full bg-muted" />}
       </div>
       <div className="mt-4">
         <div className="mono-label">{post.category}</div>
@@ -93,11 +95,13 @@ function ArticleCard({ post, size = "md" }: { post: JournalPost; size?: "md" | "
 }
 
 function JournalIndex() {
+  const posts = Route.useLoaderData();
   const [topic, setTopic] = useState<string>("All");
   const [q, setQ] = useState("");
 
-  const featured = POSTS.find((p) => p.featured) ?? POSTS[0];
-  const rest = POSTS.filter((p) => p.slug !== featured.slug);
+  const featured = posts[0];
+  const rest = featured ? posts.filter((p) => p.slug !== featured.slug) : [];
+  const topics = ["All", ...Array.from(new Set(posts.map((post) => post.category)))];
 
   const filtered = useMemo(() => {
     return rest.filter((p) => {
@@ -109,6 +113,20 @@ function JournalIndex() {
       return matchTopic && matchQ;
     });
   }, [rest, topic, q]);
+
+  if (!featured) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <PublicHeader />
+        <main className="mx-auto w-full max-w-[1240px] flex-1 px-5 py-20 text-center lg:px-8">
+          <div className="eyebrow">HYDROSEED Journal</div>
+          <h1 className="mt-3 font-display text-3xl">No published articles yet</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Published articles will appear here when they are ready.</p>
+        </main>
+        <PublicFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -152,16 +170,16 @@ function JournalIndex() {
         <div className="mx-auto max-w-[1240px] px-5 lg:px-8 py-14 lg:py-20">
           <div className="mono-label mb-6">Featured</div>
           <Link
-            to="/journal/$slug"
+            to="/journal/articles/$slug"
             params={{ slug: featured.slug }}
             className="grid gap-8 lg:grid-cols-2 lg:gap-14 items-center group"
           >
             <div className="overflow-hidden rounded-xl border border-border bg-card aspect-[4/3] lg:aspect-[5/4]">
-              <img
+              {featured.cover ? <img
                 src={featured.cover}
                 alt={featured.title}
                 className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-              />
+              /> : <div className="h-full w-full bg-muted" />}
             </div>
             <div>
               <div className="mono-label">{featured.category}</div>
@@ -186,7 +204,7 @@ function JournalIndex() {
       <section id="topics" className="border-b border-border sticky top-16 z-30 bg-background/85 backdrop-blur">
         <div className="mx-auto max-w-[1240px] px-5 lg:px-8">
           <div className="flex items-center gap-2 overflow-x-auto py-3 -mx-1 no-scrollbar">
-            {TOPICS.map((t) => (
+            {topics.map((t) => (
               <button
                 key={t}
                 onClick={() => setTopic(t)}

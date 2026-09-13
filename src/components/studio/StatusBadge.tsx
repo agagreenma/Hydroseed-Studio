@@ -4,9 +4,11 @@ import { statusLabel } from "@/lib/mock";
 const styles: Record<Status, string> = {
   draft: "bg-muted text-muted-foreground border-border",
   in_review: "bg-warn/15 text-warn-foreground border-warn/25",
+  seo_review: "bg-warn/15 text-warn-foreground border-warn/25",
   approved: "bg-info/10 text-info border-info/20",
   scheduled: "bg-primary-soft text-primary border-primary/20",
   published: "bg-success/10 text-success border-success/20",
+  updated: "bg-info/10 text-info border-info/20",
   archived: "bg-muted text-muted-foreground border-border opacity-70",
 };
 

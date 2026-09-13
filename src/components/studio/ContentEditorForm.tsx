@@ -9,7 +9,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2, Save } from "lucide-react";
+import { ImagePlus, Loader2, Save } from "lucide-react";
 import { ErrorState, LoadingState, RoleNote, SuccessNote } from "./States";
 import { useStudioRole } from "@/hooks/useStudioRole";
 import {
@@ -21,6 +21,7 @@ import {
   fetchContentTagIds,
   fetchLocales,
   fetchMedia,
+  uploadMediaFile,
   fetchTags,
   slugify,
   updateContentItem,
@@ -55,7 +56,11 @@ export function ContentEditorForm({ item }: Props) {
     enabled: isEdit,
   });
 
-  const seo = (item?.seo ?? {}) as { meta_title?: string; meta_description?: string };
+  const seo = (item?.seo ?? {}) as {
+    meta_title?: string;
+    meta_description?: string;
+    canonical_url?: string;
+  };
 
   const [title, setTitle] = useState(item?.title ?? "");
   const [slug, setSlug] = useState(item?.slug ?? "");
@@ -70,12 +75,18 @@ export function ContentEditorForm({ item }: Props) {
   const [coverMediaId, setCoverMediaId] = useState(item?.cover_media_id ?? "");
   const [metaTitle, setMetaTitle] = useState(seo.meta_title ?? "");
   const [metaDescription, setMetaDescription] = useState(seo.meta_description ?? "");
+  const [canonicalUrl, setCanonicalUrl] = useState(seo.canonical_url ?? "");
   const [selectedTags, setSelectedTags] = useState<string[] | null>(null);
   const [validation, setValidation] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const tagIds = selectedTags ?? itemTags.data ?? [];
-  const canEdit = isEdit ? canEditItem(item!.created_by) : true;
+  const coverMedia = media.data?.find((asset) => asset.id === coverMediaId);
+  const canEdit = isEdit
+    ? canEditItem(item!.created_by) && (item!.status === "draft" || item!.status === "updated")
+    : true;
 
   const referenceLoading =
     authors.isLoading || locales.isLoading || (isEdit && itemTags.isLoading) || roleLoading;
@@ -99,11 +110,12 @@ export function ContentEditorForm({ item }: Props) {
       seo: {
         ...(metaTitle.trim() ? { meta_title: metaTitle.trim() } : {}),
         ...(metaDescription.trim() ? { meta_description: metaDescription.trim() } : {}),
+        ...(canonicalUrl.trim() ? { canonical_url: canonicalUrl.trim() } : {}),
       },
     }),
     [
       title, slug, slugTouched, type, locale, excerpt, body,
-      authorId, categoryId, clusterId, coverMediaId, metaTitle, metaDescription,
+      authorId, categoryId, clusterId, coverMediaId, metaTitle, metaDescription, canonicalUrl,
     ],
   );
 
@@ -146,8 +158,11 @@ export function ContentEditorForm({ item }: Props) {
     <form onSubmit={onSubmit} className="space-y-6">
       {!canEdit && (
         <RoleNote>
-          You are signed in as <strong className="text-foreground">{primaryRole}</strong>. Writers
-          may only edit content they created, so this item is read-only for you.
+          {isEdit && item && item.status !== "draft" && item.status !== "updated" ? (
+            <>Content fields are editable in Draft or Updated status. Change the status to Draft to edit this item.</>
+          ) : (
+            <>You are signed in as <strong className="text-foreground">{primaryRole}</strong>. Writers may only edit content they created, so this item is read-only for you.</>
+          )}
         </RoleNote>
       )}
       {validation && <ErrorState message={validation} />}
@@ -161,6 +176,7 @@ export function ContentEditorForm({ item }: Props) {
         />
       )}
       {saved && <SuccessNote>{saved}</SuccessNote>}
+      {uploadError && <ErrorState message={uploadError} />}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
@@ -235,6 +251,17 @@ export function ContentEditorForm({ item }: Props) {
                 value={metaDescription}
                 disabled={!canEdit}
                 onChange={(e) => setMetaDescription(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="canonical-url">Canonical URL</label>
+              <input
+                id="canonical-url"
+                className={fieldCls}
+                value={canonicalUrl}
+                disabled={!canEdit}
+                onChange={(e) => setCanonicalUrl(e.target.value)}
+                placeholder="https://studio.hydroseed.app/journal/articles/example"
               />
             </div>
           </div>
@@ -317,6 +344,13 @@ export function ContentEditorForm({ item }: Props) {
             </div>
             <div>
               <label className={labelCls} htmlFor="cover">Cover image</label>
+              {coverMedia && (
+                <img
+                  src={coverMedia.url}
+                  alt={coverMedia.alt_text ?? coverMedia.filename}
+                  className="mb-2 aspect-video w-full rounded-md border border-border object-cover"
+                />
+              )}
               <select
                 id="cover"
                 className={fieldCls}
@@ -329,6 +363,36 @@ export function ContentEditorForm({ item }: Props) {
                   <option key={m.id} value={m.id}>{m.filename}</option>
                 ))}
               </select>
+              <input
+                id="cover-upload"
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={!canEdit || uploading}
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
+                  setUploadError(null);
+                  setUploading(true);
+                  try {
+                    const asset = await uploadMediaFile(file);
+                    setCoverMediaId(asset.id);
+                    await queryClient.invalidateQueries({ queryKey: ["media"] });
+                  } catch (error) {
+                    setUploadError((error as Error).message);
+                  } finally {
+                    setUploading(false);
+                  }
+                }}
+              />
+              <label
+                htmlFor="cover-upload"
+                className="mt-2 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium hover:bg-muted disabled:opacity-60"
+              >
+                <ImagePlus className="h-4 w-4" />
+                {uploading ? "Uploading…" : "Upload Image"}
+              </label>
             </div>
           </div>
 

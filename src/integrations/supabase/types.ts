@@ -226,9 +226,11 @@ export type Database = {
           excerpt: string | null
           id: string
           locale: string
+          published_at: string | null
           seo: Json
           slug: string
           status: Database["public"]["Enums"]["content_status"]
+          scheduled_at: string | null
           title: string
           type: Database["public"]["Enums"]["content_type"]
           updated_at: string
@@ -245,9 +247,11 @@ export type Database = {
           excerpt?: string | null
           id?: string
           locale?: string
+          published_at?: string | null
           seo?: Json
           slug: string
           status?: Database["public"]["Enums"]["content_status"]
+          scheduled_at?: string | null
           title: string
           type?: Database["public"]["Enums"]["content_type"]
           updated_at?: string
@@ -264,9 +268,11 @@ export type Database = {
           excerpt?: string | null
           id?: string
           locale?: string
+          published_at?: string | null
           seo?: Json
           slug?: string
           status?: Database["public"]["Enums"]["content_status"]
+          scheduled_at?: string | null
           title?: string
           type?: Database["public"]["Enums"]["content_type"]
           updated_at?: string
@@ -344,6 +350,54 @@ export type Database = {
           sort_order?: number
           updated_at?: string
         }
+        Relationships: []
+      }
+      content_versions: {
+        Row: {
+          author_id: string | null
+          body: string | null
+          category_id: string | null
+          cluster_id: string | null
+          content_item_id: string
+          cover_media_id: string | null
+          created_at: string
+          created_by: string
+          excerpt: string | null
+          id: string
+          locale: string
+          published_at: string | null
+          scheduled_at: string | null
+          seo: Json
+          slug: string
+          status: Database["public"]["Enums"]["content_status"]
+          title: string
+          transition_from: Database["public"]["Enums"]["content_status"] | null
+          transition_to: Database["public"]["Enums"]["content_status"] | null
+          version: number
+        }
+        Insert: {
+          author_id?: string | null
+          body?: string | null
+          category_id?: string | null
+          cluster_id?: string | null
+          content_item_id: string
+          cover_media_id?: string | null
+          created_at?: string
+          created_by?: string
+          excerpt?: string | null
+          id?: string
+          locale: string
+          published_at?: string | null
+          scheduled_at?: string | null
+          seo?: Json
+          slug: string
+          status: Database["public"]["Enums"]["content_status"]
+          title: string
+          transition_from?: Database["public"]["Enums"]["content_status"] | null
+          transition_to?: Database["public"]["Enums"]["content_status"] | null
+          version: number
+        }
+        Update: Partial<Database["public"]["Tables"]["content_versions"]["Insert"]>
         Relationships: []
       }
       media_assets: {
@@ -493,6 +547,14 @@ export type Database = {
     }
     Functions: {
       can_edit_content: { Args: { _content_id: string }; Returns: boolean }
+      can_transition_content_status: {
+        Args: {
+          _content_id: string
+          _new: Database["public"]["Enums"]["content_status"]
+          _old: Database["public"]["Enums"]["content_status"]
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -502,15 +564,30 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_editor_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      restore_content_version: {
+        Args: { _content_id: string; _expected_version: number; _version_id: string }
+        Returns: Database["public"]["Tables"]["content_items"]["Row"]
+      }
+      transition_content_status: {
+        Args: {
+          _content_id: string
+          _expected_version: number
+          _scheduled_at?: string | null
+          _target_status: Database["public"]["Enums"]["content_status"]
+        }
+        Returns: Database["public"]["Tables"]["content_items"]["Row"]
+      }
     }
     Enums: {
-      app_role: "writer" | "editor" | "administrator"
+      app_role: "writer" | "editor" | "seo_reviewer" | "publisher" | "administrator"
       content_status:
         | "draft"
         | "in_review"
+        | "seo_review"
         | "approved"
         | "scheduled"
         | "published"
+        | "updated"
         | "archived"
       content_type:
         | "article"
@@ -647,13 +724,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["writer", "editor", "administrator"],
+      app_role: ["writer", "editor", "seo_reviewer", "publisher", "administrator"],
       content_status: [
         "draft",
         "in_review",
+        "seo_review",
         "approved",
         "scheduled",
         "published",
+        "updated",
         "archived",
       ],
       content_type: [

@@ -2,7 +2,15 @@
 // NOTE: everything in this file is hard-coded sample data. Nothing here is connected to a
 // live database, analytics provider or publishing backend.
 
-export type Status = "draft" | "in_review" | "approved" | "scheduled" | "published" | "archived";
+export type Status =
+  | "draft"
+  | "in_review"
+  | "seo_review"
+  | "approved"
+  | "scheduled"
+  | "published"
+  | "updated"
+  | "archived";
 export type Language = "en" | "fr" | "es" | "ar";
 
 export const LANGS: { code: Language; label: string; flag: string }[] = [
@@ -369,9 +377,11 @@ export function statusLabel(s: Status): string {
   switch (s) {
     case "in_review": return "In Review";
     case "draft": return "Draft";
+    case "seo_review": return "SEO Review";
     case "approved": return "Approved";
     case "scheduled": return "Scheduled";
     case "published": return "Published";
+    case "updated": return "Updated";
     case "archived": return "Archived";
   }
 }

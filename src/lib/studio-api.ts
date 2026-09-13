@@ -21,6 +21,7 @@ export type Cluster = Database["public"]["Tables"]["content_clusters"]["Row"];
 export type MediaAsset = Database["public"]["Tables"]["media_assets"]["Row"];
 export type Locale = Database["public"]["Tables"]["locales"]["Row"];
 export type AuditLog = Database["public"]["Tables"]["audit_logs"]["Row"];
+export type ContentVersion = Database["public"]["Tables"]["content_versions"]["Row"];
 export type StudioMember = Database["public"]["Tables"]["studio_members"]["Row"];
 
 export const CONTENT_TYPES: { value: ContentType; label: string }[] = [
@@ -36,11 +37,24 @@ export const CONTENT_TYPES: { value: ContentType; label: string }[] = [
 export const CONTENT_STATUSES: ContentStatus[] = [
   "draft",
   "in_review",
+  "seo_review",
   "approved",
   "scheduled",
   "published",
+  "updated",
   "archived",
 ];
+
+export const WORKFLOW_TRANSITIONS: Record<ContentStatus, ContentStatus | null> = {
+  draft: "in_review",
+  in_review: "seo_review",
+  seo_review: "approved",
+  approved: "scheduled",
+  scheduled: "published",
+  published: "updated",
+  updated: "archived",
+  archived: null,
+};
 
 export function typeLabel(t: ContentType) {
   return CONTENT_TYPES.find((x) => x.value === t)?.label ?? t;
@@ -72,6 +86,20 @@ export async function fetchMyRoles(userId: string): Promise<AppRole[]> {
 
 export async function fetchAllRoles() {
   return unwrap(await supabase.from("studio_user_roles").select("*"));
+}
+
+export async function addMemberRole(userId: string, role: AppRole) {
+  const { error } = await supabase.from("studio_user_roles").insert({ user_id: userId, role });
+  if (error) throw new Error(error.message);
+}
+
+export async function removeMemberRole(userId: string, role: AppRole) {
+  const { error } = await supabase
+    .from("studio_user_roles")
+    .delete()
+    .eq("user_id", userId)
+    .eq("role", role);
+  if (error) throw new Error(error.message);
 }
 
 export async function fetchMembers() {
@@ -128,6 +156,16 @@ export async function fetchContentItems(filters: ContentFilters = {}) {
 
 export async function fetchContentItem(id: string) {
   return unwrap(await supabase.from("content_items").select("*").eq("id", id).maybeSingle());
+}
+
+export async function fetchContentVersions(contentId: string) {
+  return unwrap(
+    await supabase
+      .from("content_versions")
+      .select("*")
+      .eq("content_item_id", contentId)
+      .order("version", { ascending: false }),
+  );
 }
 
 export async function fetchContentTagIds(id: string) {
@@ -191,6 +229,36 @@ export async function updateContentItem(
   }
   await syncContentTags(id, tagIds);
   return rows[0]!;
+}
+
+export async function transitionContentStatus(
+  id: string,
+  expectedVersion: number,
+  targetStatus: ContentStatus,
+  scheduledAt?: string | null,
+) {
+  const { data, error } = await supabase.rpc("transition_content_status", {
+    _content_id: id,
+    _expected_version: expectedVersion,
+    _target_status: targetStatus,
+    _scheduled_at: scheduledAt ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function restoreContentVersion(
+  contentId: string,
+  versionId: string,
+  expectedVersion: number,
+) {
+  const { data, error } = await supabase.rpc("restore_content_version", {
+    _content_id: contentId,
+    _version_id: versionId,
+    _expected_version: expectedVersion,
+  });
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 export async function deleteContentItem(id: string) {
@@ -307,8 +375,35 @@ export type MediaInput = {
 };
 
 export async function createMedia(input: MediaInput) {
-  const { error } = await supabase.from("media_assets").insert(input);
+  const { data, error } = await supabase
+    .from("media_assets")
+    .insert(input)
+    .select("*")
+    .single();
   if (error) throw new Error(error.message);
+  return data as MediaAsset;
+}
+
+export async function uploadMediaFile(file: File) {
+  const user = (await supabase.auth.getUser()).data.user;
+  if (!user) throw new Error("You must be signed in to upload an image.");
+
+  const path = `${user.id}/${crypto.randomUUID()}-${file.name}`;
+  const { error: uploadError } = await supabase.storage
+    .from("media")
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data } = supabase.storage.from("media").getPublicUrl(path);
+  return createMedia({
+    filename: file.name,
+    url: data.publicUrl,
+    alt_text: null,
+    mime_type: file.type || null,
+    width: null,
+    height: null,
+    size_bytes: file.size,
+  });
 }
 export async function deleteMedia(id: string) {
   const { error } = await supabase.from("media_assets").delete().eq("id", id);

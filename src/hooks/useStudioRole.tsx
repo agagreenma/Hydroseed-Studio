@@ -17,6 +17,8 @@ export function useStudioRole() {
   const roles: AppRole[] = query.data ?? [];
   const isAdmin = roles.includes("administrator");
   const isEditor = roles.includes("editor") || isAdmin;
+  const isSeoReviewer = roles.includes("seo_reviewer") || isAdmin;
+  const isPublisher = roles.includes("publisher") || isAdmin;
   const isWriter = roles.includes("writer") || isEditor;
 
   return {
@@ -24,11 +26,21 @@ export function useStudioRole() {
     loading: query.isLoading,
     isAdmin,
     isEditor,
+    isSeoReviewer,
+    isPublisher,
     isWriter,
     /** Writers may only edit their own items; editors and admins may edit any. */
     canEditItem: (createdBy: string | null | undefined) =>
       isEditor || (!!user && createdBy === user.id),
     userId: user?.id ?? null,
-    primaryRole: (isAdmin ? "administrator" : isEditor ? "editor" : "writer") as AppRole,
+    primaryRole: (isAdmin
+      ? "administrator"
+      : isPublisher
+        ? "publisher"
+        : isSeoReviewer
+          ? "seo_reviewer"
+          : isEditor
+            ? "editor"
+            : "writer") as AppRole,
   };
 }

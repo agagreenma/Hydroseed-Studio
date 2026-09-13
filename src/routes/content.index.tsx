@@ -58,12 +58,22 @@ function ContentListPage() {
         title="Content items"
         description="The canonical record for every piece of HYDROSEED content."
         actions={
-          <Link
-            to="/content/new"
-            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
-          >
-            <Plus className="h-4 w-4" /> New content
-          </Link>
+          <div className="flex items-center gap-2">
+            <a
+              href="/blog"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-muted"
+            >
+              Open Blog
+            </a>
+            <Link
+              to="/content/new"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
+            >
+              <Plus className="h-4 w-4" /> New content
+            </Link>
+          </div>
         }
       />
       <PageBody>
