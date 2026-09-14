@@ -411,6 +411,17 @@ export async function createMedia(input: MediaInput) {
   return data as MediaAsset;
 }
 
+export async function updateMediaAltText(id: string, altText: string) {
+  const { data, error } = await supabase
+    .from("media_assets")
+    .update({ alt_text: altText.trim() || null })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as MediaAsset;
+}
+
 export async function uploadMediaFile(file: File) {
   const user = (await supabase.auth.getUser()).data.user;
   if (!user) throw new Error("You must be signed in to upload an image.");

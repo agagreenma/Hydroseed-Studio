@@ -2,10 +2,10 @@
  * Phase 2 — Media Library over the real media_assets records.
  * Scope is intentionally limited to create / read / delete.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Grid3x3, List, Plus, Trash2, X } from "lucide-react";
+import { Grid3x3, List, Plus, Save, Trash2, X } from "lucide-react";
 import { PageBody, PageHeader } from "@/components/studio/PageHeader";
 import {
   EmptyState,
@@ -15,7 +15,13 @@ import {
   SuccessNote,
 } from "@/components/studio/States";
 import { useStudioRole } from "@/hooks/useStudioRole";
-import { createMedia, deleteMedia, fetchMedia, type MediaAsset } from "@/lib/studio-api";
+import {
+  createMedia,
+  deleteMedia,
+  fetchMedia,
+  updateMediaAltText,
+  type MediaAsset,
+} from "@/lib/studio-api";
 
 export const Route = createFileRoute("/media")({
   head: () => ({
@@ -55,9 +61,14 @@ function MediaPage() {
   const [validation, setValidation] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [altTextDraft, setAltTextDraft] = useState("");
 
   const rows = (media.data ?? []) as MediaAsset[];
   const selected = rows.find((m) => m.id === selectedId) ?? rows[0] ?? null;
+
+  useEffect(() => {
+    setAltTextDraft(selected?.alt_text ?? "");
+  }, [selected?.id, selected?.alt_text]);
 
   function closeForm() {
     setFormOpen(false);
@@ -97,8 +108,23 @@ function MediaPage() {
     },
   });
 
+  const updateAltText = useMutation({
+    mutationFn: () => {
+      if (!selected) throw new Error("Select a media asset before saving alt text.");
+      return updateMediaAltText(selected.id, altTextDraft);
+    },
+    onSuccess: async () => {
+      setSuccess("Alt text updated.");
+      await queryClient.invalidateQueries({ queryKey: ["media"] });
+    },
+  });
+
   function canDelete(asset: MediaAsset) {
     return isEditor || (!!userId && asset.created_by === userId);
+  }
+
+  function canEdit(asset: MediaAsset) {
+    return canDelete(asset);
   }
 
   return (
@@ -132,6 +158,7 @@ function MediaPage() {
         {validation && <ErrorState message={validation} />}
         {save.error && <ErrorState message={(save.error as Error).message} />}
         {remove.error && <ErrorState message={(remove.error as Error).message} />}
+        {updateAltText.error && <ErrorState message={(updateAltText.error as Error).message} />}
 
         {formOpen && (
           <form
@@ -390,8 +417,30 @@ function MediaPage() {
                   </div>
                   <div>
                     <div className="mono-label">Alt text</div>
-                    <p className="text-xs text-muted-foreground">{selected.alt_text ?? "—"}</p>
+                    <textarea
+                      aria-label={`Alt text for ${selected.filename}`}
+                      rows={3}
+                      value={altTextDraft}
+                      onChange={(event) => {
+                        setSuccess(null);
+                        updateAltText.reset();
+                        setAltTextDraft(event.target.value);
+                      }}
+                      disabled={!canEdit(selected) || updateAltText.isPending}
+                      placeholder="Describe this image, or leave blank if decorative."
+                      className="mt-1.5 w-full rounded-md border border-border bg-card px-3 py-2 text-xs"
+                    />
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => updateAltText.mutate()}
+                    disabled={!canEdit(selected) || updateAltText.isPending || altTextDraft === (selected.alt_text ?? "")}
+                    className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border border-border px-3 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                  >
+                    <Save className="h-4 w-4" />
+                    {updateAltText.isPending ? "Saving…" : "Save alt text"}
+                  </button>
+                  {updateAltText.isSuccess && <p className="text-xs text-success">Saved to this media record.</p>}
                   <button
                     type="button"
                     onClick={() => {
