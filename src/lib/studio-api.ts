@@ -154,6 +154,33 @@ export async function fetchContentItems(filters: ContentFilters = {}) {
   return unwrap(await q);
 }
 
+export type SeoAuditItem = Pick<
+  ContentItem,
+  "id" | "title" | "slug" | "type" | "status" | "seo" | "cover_media_id"
+> & {
+  media_assets: Pick<MediaAsset, "id" | "filename" | "alt_text"> | null;
+};
+
+export type SeoAuditData = {
+  items: SeoAuditItem[];
+  mediaAssets: Pick<MediaAsset, "id" | "filename" | "alt_text">[];
+};
+
+export async function fetchSeoAuditItems() {
+  const [{ data, error }, mediaAssets] = await Promise.all([
+    supabase
+      .from("content_items")
+      .select("id, title, slug, type, status, seo, cover_media_id, media_assets(id, filename, alt_text)")
+      .order("updated_at", { ascending: false }),
+    fetchMedia(),
+  ]);
+  if (error) throw new Error(error.message);
+  return {
+    items: (data ?? []) as unknown as SeoAuditItem[],
+    mediaAssets: mediaAssets.map(({ id, filename, alt_text }) => ({ id, filename, alt_text })),
+  } satisfies SeoAuditData;
+}
+
 export async function fetchContentItem(id: string) {
   return unwrap(await supabase.from("content_items").select("*").eq("id", id).maybeSingle());
 }
