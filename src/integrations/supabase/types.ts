@@ -442,6 +442,39 @@ export type Database = {
         }
         Relationships: []
       }
+      redirects: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string
+          destination: string
+          id: string
+          source_path: string
+          status_code: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string
+          destination: string
+          id?: string
+          source_path: string
+          status_code?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string
+          destination?: string
+          id?: string
+          source_path?: string
+          status_code?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       studio_members: {
         Row: {
           created_at: string

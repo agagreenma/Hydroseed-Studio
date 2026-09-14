@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { renderRobots, renderSitemap, resolveRedirect } from "./lib/discovery.server";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -44,12 +45,33 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+async function normalizePublicJournalRobots(pathname: string, response: Response): Promise<Response> {
+  if (pathname !== "/journal" && pathname !== "/journal/") return response;
+  if (!(response.headers.get("content-type") ?? "").includes("text/html")) return response;
+
+  const body = await response.text();
+  const normalized = body.replace(
+    /<meta name="robots" content="noindex,nofollow"\s*\/?\s*>/,
+    '<meta name="robots" content="index,follow">',
+  );
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  return new Response(normalized, { status: response.status, headers });
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const pathname = new URL(request.url).pathname;
+      if (pathname === "/robots.txt") return renderRobots();
+      if (pathname === "/sitemap.xml") return await renderSitemap();
+      const redirect = await resolveRedirect(pathname);
+      if (redirect) return redirect;
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizePublicJournalRobots(pathname, response);
+      return await normalizeCatastrophicSsrResponse(normalized);
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {

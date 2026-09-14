@@ -19,6 +19,7 @@ export type Tag = Database["public"]["Tables"]["tags"]["Row"];
 export type Topic = Database["public"]["Tables"]["topics"]["Row"];
 export type Cluster = Database["public"]["Tables"]["content_clusters"]["Row"];
 export type MediaAsset = Database["public"]["Tables"]["media_assets"]["Row"];
+export type Redirect = Database["public"]["Tables"]["redirects"]["Row"];
 export type Locale = Database["public"]["Tables"]["locales"]["Row"];
 export type AuditLog = Database["public"]["Tables"]["audit_logs"]["Row"];
 export type ContentVersion = Database["public"]["Tables"]["content_versions"]["Row"];
@@ -132,6 +133,67 @@ export async function fetchMedia() {
   return unwrap(
     await supabase.from("media_assets").select("*").order("created_at", { ascending: false }),
   );
+}
+
+export type RedirectInput = {
+  source_path: string;
+  destination: string;
+  status_code: 301 | 302;
+  active: boolean;
+};
+
+export function validateRedirectInput(
+  input: RedirectInput,
+  existing: Redirect[],
+  editingId?: string,
+): string | null {
+  const source = input.source_path.trim();
+  const destination = input.destination.trim();
+  const privatePath = /^\/(auth|content|team|settings|seo|redirects|media|admin)(\/|$)/;
+  if (!/^\/(?!\/)/.test(source)) return "Source must be a public path beginning with /.";
+  if (privatePath.test(source)) return "Private Studio paths cannot be redirect sources.";
+  if (!(destination.startsWith("/") || /^https?:\/\//i.test(destination))) {
+    return "Destination must be a public path or an HTTP(S) URL.";
+  }
+  if (destination.startsWith("/") && privatePath.test(destination)) {
+    return "Private Studio paths cannot be redirect destinations.";
+  }
+  if (source === destination) return "Source and destination must be different.";
+  if (input.status_code !== 301 && input.status_code !== 302) return "Only 301 and 302 redirects are supported.";
+  if (input.active && existing.some((item) => item.id !== editingId && item.active && item.source_path === source)) {
+    return "An active redirect already uses this source path.";
+  }
+
+  const active = existing.filter((item) => item.active && item.id !== editingId);
+  let current = destination;
+  for (let step = 0; step < active.length + 1 && current.startsWith("/"); step += 1) {
+    if (current === source) return "This redirect would create a loop.";
+    const next = active.find((item) => item.source_path === current);
+    if (!next) break;
+    current = next.destination;
+  }
+  return null;
+}
+
+export async function fetchRedirects() {
+  return unwrap(await supabase.from("redirects").select("*").order("created_at", { ascending: false }));
+}
+
+export async function createRedirect(input: RedirectInput) {
+  const { data, error } = await supabase.from("redirects").insert(input).select("*").single();
+  if (error) throw new Error(error.message);
+  return data as Redirect;
+}
+
+export async function updateRedirect(id: string, input: RedirectInput) {
+  const { data, error } = await supabase.from("redirects").update(input).eq("id", id).select("*").single();
+  if (error) throw new Error(error.message);
+  return data as Redirect;
+}
+
+export async function deleteRedirect(id: string) {
+  const { error } = await supabase.from("redirects").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 /* ---------------- content ---------------- */
@@ -444,6 +506,27 @@ export async function uploadMediaFile(file: File) {
   });
 }
 export async function deleteMedia(id: string) {
+  const { data: media, error: mediaError } = await supabase
+    .from("media_assets")
+    .select("url")
+    .eq("id", id)
+    .single();
+  if (mediaError) throw new Error(mediaError.message);
+  if (!media) throw new Error("Media record not found.");
+  const prefix = "/storage/v1/object/public/media/";
+  try {
+    const storageUrl = new URL(media.url);
+    const supabaseUrl = new URL(import.meta.env.VITE_SUPABASE_URL as string);
+    if (storageUrl.origin === supabaseUrl.origin && storageUrl.pathname.startsWith(prefix)) {
+      const objectPath = decodeURIComponent(storageUrl.pathname.slice(prefix.length));
+      if (objectPath) {
+        const { error: storageError } = await supabase.storage.from("media").remove([objectPath]);
+        if (storageError) throw new Error(`Storage deletion failed: ${storageError.message}`);
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Storage deletion failed:")) throw error;
+  }
   const { error } = await supabase.from("media_assets").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }

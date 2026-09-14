@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Clock, Search } from "lucide-react";
 import { PublicHeader } from "@/components/public/PublicHeader";
@@ -65,6 +65,9 @@ function ArticleCard({ article }: { article: PublishedArticle }) {
 }
 
 function ArticlesPage() {
+  const location = useLocation();
+  if (location.pathname !== "/journal/articles") return <Outlet />;
+
   const articles = Route.useLoaderData();
   const [section, setSection] = useState("All");
   const [q, setQ] = useState("");

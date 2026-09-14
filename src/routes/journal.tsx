@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowRight, Search, Clock, ChevronRight } from "lucide-react";
 import { studioUrl } from "@/lib/site";
@@ -95,6 +95,9 @@ function ArticleCard({ post, size = "md" }: { post: PublishedArticle; size?: "md
 }
 
 function JournalIndex() {
+  const location = useLocation();
+  if (location.pathname !== "/journal") return <Outlet />;
+
   const posts = Route.useLoaderData();
   const [topic, setTopic] = useState<string>("All");
   const [q, setQ] = useState("");

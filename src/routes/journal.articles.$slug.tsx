@@ -1,6 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { ArticlePresentation } from "@/components/public/ArticlePresentation";
 import { fetchPublishedArticle, fetchPublishedArticles } from "@/lib/public-content";
+import { studioUrl } from "@/lib/site";
 
 export const Route = createFileRoute("/journal/articles/$slug")({
   loader: async ({ params }) => {
@@ -47,6 +48,29 @@ export const Route = createFileRoute("/journal/articles/$slug")({
             dateModified: article.updatedAt,
             mainEntityOfPage: article.canonicalUrl,
             author: { "@type": "Person", name: article.author.name },
+            publisher: { "@id": `${studioUrl("/")}#organization` },
+          }),
+        },
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": `${studioUrl("/")}#organization`,
+            name: "HYDROSEED Studio",
+            url: studioUrl("/"),
+          }),
+        },
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: studioUrl("/") },
+              { "@type": "ListItem", position: 2, name: "Journal", item: studioUrl("/journal") },
+              { "@type": "ListItem", position: 3, name: article.title, item: article.canonicalUrl },
+            ],
           }),
         },
       ],
