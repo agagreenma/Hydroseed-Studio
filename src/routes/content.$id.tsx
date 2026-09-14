@@ -61,6 +61,7 @@ function ContentItemPage() {
   const [scheduledAt, setScheduledAt] = useState("");
   const [workflowMessage, setWorkflowMessage] = useState<string | null>(null);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const remove = useMutation({
     mutationFn: () => deleteContentItem(id),
@@ -162,6 +163,15 @@ function ContentItemPage() {
                 <Eye className="h-4 w-4" /> Preview
               </Link>
             )}
+            {data && canEdit && (
+              <button
+                type="button"
+                onClick={() => setEditing((value) => !value)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm hover:bg-muted"
+              >
+                {editing ? "Done" : "Modify"}
+              </button>
+            )}
             <button
               type="button"
               disabled={!canEdit || remove.isPending}
@@ -251,7 +261,7 @@ function ContentItemPage() {
                 {data.published_at && <div className="mt-1 text-xs text-muted-foreground">Published {new Date(data.published_at).toLocaleString()}</div>}
               </div>
             </div>
-            <ContentEditorForm item={data} />
+            <ContentEditorForm item={data} editing={editing} />
             <div className="surface-card p-4">
               <div className="mono-label mb-3">History</div>
               {history.isLoading && (

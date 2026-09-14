@@ -36,9 +36,9 @@ const areaCls =
   "w-full rounded-md border border-border bg-card px-3 py-2 text-sm disabled:opacity-60";
 const labelCls = "mono-label mb-1.5 block";
 
-type Props = { item?: ContentItem; defaultType?: ContentType };
+type Props = { item?: ContentItem; defaultType?: ContentType; editing?: boolean };
 
-export function ContentEditorForm({ item, defaultType = "article" }: Props) {
+export function ContentEditorForm({ item, defaultType = "article", editing = !item }: Props) {
   const isEdit = !!item;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -84,9 +84,7 @@ export function ContentEditorForm({ item, defaultType = "article" }: Props) {
 
   const tagIds = selectedTags ?? itemTags.data ?? [];
   const coverMedia = media.data?.find((asset) => asset.id === coverMediaId);
-  const canEdit = isEdit
-    ? canEditItem(item!.created_by) && (item!.status === "draft" || item!.status === "updated")
-    : true;
+  const canEdit = isEdit ? canEditItem(item!.created_by) && editing : true;
 
   const referenceLoading =
     authors.isLoading || locales.isLoading || (isEdit && itemTags.isLoading) || roleLoading;
@@ -158,8 +156,8 @@ export function ContentEditorForm({ item, defaultType = "article" }: Props) {
     <form onSubmit={onSubmit} className="space-y-6">
       {!canEdit && (
         <RoleNote>
-          {isEdit && item && item.status !== "draft" && item.status !== "updated" ? (
-            <>Content fields are editable in Draft or Updated status. Change the status to Draft to edit this item.</>
+          {isEdit && item && canEditItem(item.created_by) ? (
+            <>Click Modify to edit this content while preserving its current status.</>
           ) : (
             <>You are signed in as <strong className="text-foreground">{primaryRole}</strong>. Writers may only edit content they created, so this item is read-only for you.</>
           )}

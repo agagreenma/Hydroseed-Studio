@@ -60,7 +60,7 @@ function ContentListPage() {
         actions={
           <div className="flex items-center gap-2">
             <a
-              href="/blog"
+              href="/journal"
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-muted"
